@@ -1,2 +1,2 @@
-# Autosplitters-
+# Autosplitters
 Autosplitters
