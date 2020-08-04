@@ -1,6 +1,6 @@
 state("Rayman Legends"){
 	uint loading: "Rayman Legends.exe", 0x00A46154, 0x8, 0x1D4, 0x0, 0x58;    		// 0 if loading, 1 otherwise
-	uint place: "Rayman Legends.exe", 0x00AE683C, 0x34C;					// it's complicated...
+	uint place: "Rayman Legends.exe", 0x00AE683C, 0x34C;					// 
 	uint invasion: "Rayman Legends.exe", 0x00A4619C, 0x3C, 0xC, 0x8, 0x1B4, 0x774;		// 4 if in invasion level
 	uint ticket: "Rayman Legends.exe", 0x00A46104, 0x70;					// 1 if ticket, 0 otherwise
 	uint pauseMenu: "Rayman Legends.exe", 0x00A46158, 0x80, 0x3C;				// 1 if menu pops up
@@ -19,9 +19,6 @@ state("Rayman Legends"){
 
 	uint punch11: "Rayman Legends.exe", 0x00AEA3B0, 0x0, 0x18, 0x234, 0x0, 0x20;		// 1 if boss 1/5 is punched
 	uint punch21: "Rayman Legends.exe", 0x00AEA3B0, 0x0, 0x8, 0x220, 0x4, 0x20;		// 1 if boss 2/3/4 is punched
-	//uint punch12: "Rayman Legends.exe", 0x00AEA3B0, 0x0, 0x18, 0x220, 0x4, 0x20;
-	//uint punch13: "Rayman Legends.exe", 0x00AEA3B0, 0x0, 0x18, 0x8C, 0xA4, 0xC, 0x108, 0x128;
-
 }
 
 startup{
@@ -41,8 +38,8 @@ startup{
 	settings.Add("lastTicket", false, "Split on scratching the last ticket");
 	
 	// timer start/reset
-	settings.Add("levelReset", false, "Reset timer when restarting a level");
-	settings.Add("levelStart", false, "Start timer upon spawning into a level");
+	//settings.Add("levelReset", false, "Reset timer when restarting a level");
+	//settings.Add("levelStart", false, "Start timer upon spawning into a level");
 
 	// extra settings
 	settings.Add("miscellaneous", false, "Extra settings");
@@ -167,31 +164,31 @@ update{
 	// count number of bosses defeated
 	
 	// boss1
-	if ((!vars.boss1) && (current.levelID == 1748345027) && (current.punch11 == 1) && (old.punch11 == 0)){
+	if ((!vars.boss1) && (current.levelID == 1748345027) && ( ((current.punch11 == 1) && (old.punch11 == 0)) || (vars.finishLevel)) ){
 		vars.boss1 = true;
 		vars.bossCount += 1;
 	}
 
 	// boss2
-	if ((!vars.boss2) && (current.levelID == 3178754230) && (current.punch21 == 1) && (old.punch21 == 0)){
+	if ((!vars.boss2) && (current.levelID == 3178754230) && ( ((current.punch21 == 1) && (old.punch21 == 0)) || (vars.finishLevel))){
 		vars.boss2 = true;
 		vars.bossCount += 1;
 	}
 
 	// boss3
-	if ((!vars.boss3) && (current.levelID == 2261450378) && (current.punch21 == 1) && (old.punch21 == 0)){
+	if ((!vars.boss3) && (current.levelID == 2261450378) && ( ((current.punch21 == 1) && (old.punch21 == 0)) || (vars.finishLevel))){
 		vars.boss3 = true;
 		vars.bossCount += 1;
 	}
 
 	// boss4
-	if ((!vars.boss4) && (current.levelID == 1549755521) && (current.punch21 == 1) && (old.punch21 == 0)){
+	if ((!vars.boss4) && (current.levelID == 1549755521) && ( ((current.punch21 == 1) && (old.punch21 == 0)) || (vars.finishLevel))){
 		vars.boss4 = true;
 		vars.bossCount += 1;
 	}
 
 	// boss5
-	if ((!vars.boss5) && (current.levelID == 2919390489) && (current.punch11 == 1) && (old.punch11 == 0)){
+	if ((!vars.boss5) && (current.levelID == 2919390489) && ( ((current.punch11 == 1) && (old.punch11 == 0)) || (vars.finishLevel))){
 		vars.boss5 = true;
 		vars.bossCount += 1;
 	}
@@ -210,6 +207,12 @@ update{
 		vars.deathCount = 0;
 		vars.teensyCount = 0;
 		vars.reachedEnd = false;
+		vars.bossCount = 0;
+		vars.boss1 = false;
+		vars.boss2 = false;
+		vars.boss3 = false;
+		vars.boss4 = false;
+		vars.boss5 = false;
 		vars.inMenu = true;
 	}
 	if ((old.ticket==1) && (current.ticket==0)){
@@ -217,10 +220,9 @@ update{
 	}
 
 
-
+	// update some splitting variables
 	vars.lumCounting = ((current.lumScreen == 1) && (old.lumScreen != 1));
 
-	// at teensy gathering at end of level
 	vars.teensyGathering = ((current.tgatherEnd == 1) && (old.tgatherEnd == 0) && (current.place == 0) && (old.place == 1065353216) && (old.tgather == 0) && (current.tgather == 1));
 	
 	vars.reachedEnd = ((vars.lumCounting) || (vars.inInvasion && current.invasionTimeScreen == 1));
@@ -228,6 +230,7 @@ update{
 	vars.finishLevel = (vars.finishLevel || vars.reachedEnd);
 
 
+	// update text component variables
 	if (settings["teensySplit"]){
 		if (current.teensy > vars.teensyCountUpper){
 			vars.teensyCountUpper = current.teensy;
@@ -240,7 +243,8 @@ update{
 		}
 	}
 	if (vars.deathCountText){
-		if ((current.death > old.death) || ((current.loading != 0) && (current.invasion == 4) && ((current.levelReset == 0) && (old.levelReset != 0)))){
+		vars.deathComp.Text2 = vars.bossCount.ToString(); 
+		if ( false && (current.death > old.death) || ((current.loading != 0) && (current.invasion == 4) && ((current.levelReset == 0) && (old.levelReset != 0)))){
 			vars.deathCount += 1;
 			vars.deathComp.Text2 = vars.deathCount.ToString();
 		}
@@ -281,7 +285,7 @@ split{
 
 	// punching last teensy
 	if (settings["punch"] && vars.bossCount == 5){
-		vars.bossCount = -1;
+		vars.bossCount += 1;
 		vars.split = true;
 	}
 
@@ -296,15 +300,10 @@ split{
 		vars.split = true;
 	}
 
-
-
 	// split at teensy gathering
 	if (settings["teensyGatherSplit"] && (vars.teensyGathering)){
 		vars.split = true;
 	}
-
-
-
 
 	// split at lum count
 	if (settings["lumCountStartSplit"] && (vars.lumCounting)){
@@ -318,15 +317,4 @@ split{
 
 	return vars.split;
 
-
-	// tell when a level is reset and start on that as well
-	// reset death counter in above case for invasion sprints
-	// ILs, start right after load maybe.
-
-
-	// button press
-	// split on 700/100 teensy, not stuck after completing count?
-	// diamond cup	
-
-	// ILs, start right after load maybe.
 }
