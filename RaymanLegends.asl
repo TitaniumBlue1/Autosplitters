@@ -345,4 +345,22 @@ split{
 
 	return vars.split;
 
+	// extra boss pointer - done
+	// remove 0.05s - done
+
+	// improve start condition - done
+	// screen wipe removal for first level - done
+	// 10th ticket split - done
+
+	// tell when a level is reset and start on that as well
+	// reset death counter in above case for invasion sprints
+	// ILs, start right after load maybe.
+
+
+	
+	// split on 700/100 teensy, not stuck after completing count?
+	// diamond cup	
+ 
+	// ILs, start right after load maybe.
+
 }
