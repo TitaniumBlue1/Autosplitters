@@ -92,7 +92,7 @@ init{
 	vars.checkStart = false;
 
 
-	if (settings["deathCounter"] || settings["teensyCounterLevel"] || settings["teensyCounterTotal"]){
+	if (settings["miscellaneous"]){
 		foreach (LiveSplit.UI.Components.IComponent component in timer.Layout.Components) {
         		if (component.GetType().Name == "TextComponent") {
 				vars.temp = component;
@@ -150,7 +150,7 @@ start{
 	}
 
 	// spawning in level
-	//if (settings["levelReset"] && (current.place == 1065353216) && (old.place != 1065353216) ){
+	//if (settings["levelStart"] && (current.place == 1065353216) && (old.place != 1065353216) ){
 	//	return true
 	//}
 }
@@ -179,68 +179,65 @@ reset{
 	return (current.menu == 1);
 
 	// reset on level restart
-	//if ( settings["levelStart"] && (current.loading != 0) && (current.levelReset == 0) && (old.levelReset != 0) ){
+	//if ( settings["levelReset"] && (current.loading != 0) && (current.levelReset == 0) && (old.levelReset != 0) ){
 	//	return true;
 	//}
 }
 
 update{
 
-	// count number of bosses defeated
-
 	// update some splitting variables
 	vars.lumCounting = ((current.lumScreen == 1) && (old.lumScreen != 1));
-
-	vars.teensyGathering = ((current.tgatherEnd == 1) && (old.tgatherEnd == 0) && (current.place == 0) && (old.place == 1065353216) && (old.tgather == 0) && (current.tgather == 1));
-	
+	vars.teensyGathering = ((old.tgatherEnd == 0) && (current.tgatherEnd == 1) && (current.tgather == 1));
 	vars.reachedEnd = ((vars.lumCounting) || (vars.inInvasion && current.invasionTimeScreen == 1));
-
 	vars.finishLevel = (vars.finishLevel || vars.reachedEnd);
 	
+	// count number of bosses defeated
 	// boss1
 	if ((!vars.boss1) && (current.levelID == 1748345027) && ( ((current.punch11 == 1) && (old.punch11 == 0)) || (vars.finishLevel)) ){
 		vars.boss1 = true;
 		vars.bossCount += 1;
 	}
-
 	// boss2
 	if ((!vars.boss2) && (current.levelID == 3178754230) && ( ((current.punch21 == 1) && (old.punch21 == 0)) || (vars.finishLevel))){
 		vars.boss2 = true;
 		vars.bossCount += 1;
 	}
-
 	// boss3
 	if ((!vars.boss3) && (current.levelID == 2261450378) && ( ((current.punch21 == 1) && (old.punch21 == 0)) || (vars.finishLevel))){
 		vars.boss3 = true;
 		vars.bossCount += 1;
 	}
-
 	// boss4
 	if ((!vars.boss4) && (current.levelID == 1549755521) && ( ((current.punch21 == 1) && (old.punch21 == 0)) || (vars.finishLevel))){
 		vars.boss4 = true;
 		vars.bossCount += 1;
 	}
-
 	// boss5
 	if ((!vars.boss5) && (current.levelID == 2919390489) && ( ((current.punch11 == 1) && (old.punch11 == 0)) || ((current.punch12 == 1) && (old.punch12 == 0)) || ((current.punch13 == 2) && (old.punch13 == 1)) || (vars.finishLevel))){
 		vars.boss5 = true;
 		vars.bossCount += 1;
 	}
 
+
+	// place variables
 	if (current.place != 0){
 		vars.checkStart = false;
 	}
-
 	if (current.place == 1065353216){
 		vars.inLevel = true;
 		vars.leavePause = true;
 	}
 	if (current.invasion == 4){
 		vars.inInvasion = true;
-	}	
+	}
+
+	
+	// main menu, reset some variables
 	if (current.menu == 1){
-		// main menu, reset some variables
 		vars.numTickets = 0;
+		vars.splitTickets = true;
+		vars.splitTickets10 = true;
 		vars.deathCount = 0;
 		vars.teensyCount = 0;
 		vars.reachedEnd = false;
@@ -253,22 +250,26 @@ update{
 		vars.checkStart = false;
 		vars.inMenu = true;
 	}
+	
+	// update tickets scratched
 	if ((old.ticket==1) && (current.ticket==0)){
 		vars.numTickets += 1;
 	}
 
-	// update text component variables
+	// update teensy split helper variables
 	if (settings["teensySplit"]){
 		if (current.teensy > vars.teensyCountUpper){
 			vars.teensyCountUpper = current.teensy;
 		}
 		if ((current.teensy < old.teensy) && (old.teensy == vars.teensyCountUpper)){
-			vars.teensyCountUpper += 1; 
+			vars.teensyCountUpper += 1;
 		}
 		if (current.loading == 0){
 			vars.teensyCountUpper = 0;
 		}
 	}
+
+	// update text component variables
 	if (vars.deathCountText){
 		if ((current.death > old.death) || (current.seqReset > old.seqReset) || ((current.loading != 0) && ((current.invasion == 4) && (current.levelReset == 0) && (old.levelReset != 0)))){
 			vars.deathCount += 1;
@@ -288,8 +289,11 @@ update{
 			vars.teensyCount += vars.teensyCountLevel;
 			vars.teensyCountLevel = 0;
 		}
-		vars.ttcomp.Text2 = (vars.teensyCount + current.teensy).ToString();
+		if (current.teensy != old.teensy){
+			vars.ttcomp.Text2 = (vars.teensyCount + current.teensy).ToString();
+		}
 	}
+
 }
 
 split{
@@ -309,15 +313,10 @@ split{
 		vars.finishLevel = false;
 	}
 
-	// punching last teensy
+	// punching last teensy, adjust for late split
 	if (settings["punch"] && vars.bossCount == 5){
 		timer.SetGameTime(timer.CurrentTime.GameTime - TimeSpan.FromMilliseconds(50));
 		vars.bossCount += 1;
-		vars.split = true;
-	}
-
-	// exit invasion button press.
-	if ((settings["invasionSprintEnd"]) && (vars.finishLevel) && (current.invasion == 0) && (old.invasion == 4)){
 		vars.split = true;
 	}
 
@@ -332,22 +331,18 @@ split{
 		vars.split = true;
 	}
 
+	// exit invasion button press.
+	vars.split = (vars.split || ((settings["invasionSprintEnd"]) && (vars.finishLevel) && (current.invasion == 0) && (old.invasion == 4)) );
+
 	// split at teensy gathering
-	if (settings["teensyGatherSplit"] && (vars.teensyGathering)){
-		vars.split = true;
-	}
+	vars.split = (vars.split || (settings["teensyGatherSplit"] && (vars.teensyGathering)) );
 
 	// split at lum count
-	if (settings["lumCountStartSplit"] && (vars.lumCounting)){
-		vars.split = true;
-	}
+	vars.split = (vars.split || (settings["lumCountStartSplit"] && (vars.lumCounting)) );
 
 	// split on each teensy collected
-	if (settings["teensySplit"] && (current.teensy > old.teensy) && (current.teensy == vars.teensyCountUpper)){
-		vars.split = true;
-	}
+	vars.split = (vars.split || (settings["teensySplit"] && (current.teensy > old.teensy) && (current.teensy == vars.teensyCountUpper)) );
 
 	return vars.split;
-
 
 }
