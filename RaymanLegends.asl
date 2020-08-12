@@ -1,3 +1,5 @@
+// created by: Tenit
+
 state("Rayman Legends"){
 	uint loading: "Rayman Legends.exe", 0x00A46154, 0x8, 0x1D4, 0x0, 0x58;    		// 0 if loading, 1 otherwise
 	uint place: "Rayman Legends.exe", 0x00AE683C, 0x34C;					// 
@@ -13,18 +15,21 @@ state("Rayman Legends"){
 	uint tgatherEnd: "Rayman Legends.exe", 0x00AEA3B8, 0x4;					// 1 if at end of level or just entering a level
 	uint tgather: "Rayman Legends.exe", 0x00AE483C, 0x188, 0x4, 0x5E0;			// teensy gather, 1 if there 0 otherwise.
 	uint levelReset: "Rayman Legends.exe", 0x00A46154, 0x8, 0x114, 0x0, 0x1D8;		// 0 if resetting in a level
+	uint seqReset: "Rayman Legends.exe", 0x00AEB67C, 0x3B8;					// counts how many sequence resets happen in a level
 	
 	uint levelID: "Rayman Legends.exe", 0xAE7868, 0x1F0;					// level ID
 	uint screenWipe: "Rayman Legends.exe", 0x00AE7B2C, 0x2C, 0x4C, 0x270, 0x10, 0xC4;	// 1 if screen wipe is active
 
 	uint punch11: "Rayman Legends.exe", 0x00AEA3B0, 0x0, 0x18, 0x234, 0x0, 0x20;		// 1 if boss 1/5 is punched
+	uint punch12: "Rayman Legends.exe", 0x00AEA3B0, 0x0, 0x18, 0x220, 0x4, 0x20;
+	uint punch13: "Rayman Legends.exe", 0x00AEA3B0, 0x0, 0x18, 0x8C, 0xA4, 0xC, 0x108, 0x128;
 	uint punch21: "Rayman Legends.exe", 0x00AEA3B0, 0x0, 0x8, 0x220, 0x4, 0x20;		// 1 if boss 2/3/4 is punched
 }
 
 startup{
  
 	// level splits
-	settings.Add("levelSplit", true, "Split on exiting a level");
+	settings.Add("levelSplit", true, "Level splits");
 	settings.Add("mainLevelSplit", true, "Split on exiting a main level", "levelSplit");
 	settings.Add("invasionLevelSplit", true, "Split on exiting an invasion level", "levelSplit");
 	settings.Add("punch", true, "Split on punching the last teensy", "levelSplit");
@@ -35,9 +40,10 @@ startup{
 	// extra splits
 	settings.Add("invasionSprintStart", false, "Start on pressing OK in invasion level");
 	settings.Add("teensySplit", false, "Split on each teensy collected in level");
-	settings.Add("lastTicket", false, "Split on scratching the last ticket");
+	settings.Add("10Ticket", false, "Split on scratching the 10th ticket");
+	settings.Add("lastTicket", false, "Split on scratching the last ticket (154)");
 	
-	// timer start/reset
+	// timer start/reset to do
 	//settings.Add("levelReset", false, "Reset timer when restarting a level");
 	//settings.Add("levelStart", false, "Start timer upon spawning into a level");
 
@@ -69,7 +75,9 @@ init{
 	vars.lTeensyCountText = false;			// whether to display level teensy count
 	vars.numTickets = 0;				// total number of tickets scratched
 	vars.totalTickets = 154;			// total number of tickets in the game
+	vars.tickets10 = 10;
 	vars.splitTickets = true;			// whether to split on last ticket, prevents redundant splits
+	vars.splitTickets10 = true;
 	vars.teensyGathering = false;			// if at teensy gathering at end of level
 	vars.lumCounting = false;			// if at lum counting
 	vars.reachedEnd = false;			// if the level has been completed - prevents splitting after leaving a level early
@@ -80,6 +88,8 @@ init{
 	vars.boss5 = false;
 	vars.bossCount = 0;				// number of bosses defeated
 	vars.changeTime = false;			// whether time should be changed from pause
+	vars.leavePause = false;			// change time when leaving a level
+	vars.checkStart = false;
 
 
 	if (settings["deathCounter"] || settings["teensyCounterLevel"] || settings["teensyCounterTotal"]){
@@ -114,8 +124,22 @@ init{
 
 
 start{
-	// spawning in gallery or pressing pause
-	if ( (vars.inMenu) && ((current.place==1092616192) || (current.pauseMenu==1)) ){
+	// pressing pause
+	if ( (vars.inMenu) && (current.pauseMenu==1) ){
+		vars.inMenu = false;
+		vars.checkStart = true;
+		vars.leavePause = true;
+		return true;
+	}
+
+	// mismenu
+	if (vars.checkStart && ((current.pauseMenu==1) && (old.pauseMenu==0)) ){
+		vars.leavePause = true;
+		return true;
+	}
+
+	// spawning in gallery
+	if ((vars.inMenu) && (current.place==1092616192)){
 		vars.inMenu = false;
 		return true;
 	}
@@ -140,9 +164,10 @@ isLoading{
 	}
 
 	// if load occurs && entering level, set game time to stored time
-	if (vars.changeTime && (current.loading == 0) && (current.levelID != 4294967295)){
+	if (vars.changeTime && (current.loading == 0) && ((current.levelID != 4294967295) || vars.leavePause) ){
 		timer.SetGameTime(vars.pTime);
 		vars.changeTime = false;
+		vars.leavePause = false;
 	}
 
 	// if load occurs, pause timer
@@ -162,6 +187,15 @@ reset{
 update{
 
 	// count number of bosses defeated
+
+	// update some splitting variables
+	vars.lumCounting = ((current.lumScreen == 1) && (old.lumScreen != 1));
+
+	vars.teensyGathering = ((current.tgatherEnd == 1) && (old.tgatherEnd == 0) && (current.place == 0) && (old.place == 1065353216) && (old.tgather == 0) && (current.tgather == 1));
+	
+	vars.reachedEnd = ((vars.lumCounting) || (vars.inInvasion && current.invasionTimeScreen == 1));
+
+	vars.finishLevel = (vars.finishLevel || vars.reachedEnd);
 	
 	// boss1
 	if ((!vars.boss1) && (current.levelID == 1748345027) && ( ((current.punch11 == 1) && (old.punch11 == 0)) || (vars.finishLevel)) ){
@@ -188,15 +222,18 @@ update{
 	}
 
 	// boss5
-	if ((!vars.boss5) && (current.levelID == 2919390489) && ( ((current.punch11 == 1) && (old.punch11 == 0)) || (vars.finishLevel))){
+	if ((!vars.boss5) && (current.levelID == 2919390489) && ( ((current.punch11 == 1) && (old.punch11 == 0)) || ((current.punch12 == 1) && (old.punch12 == 0)) || ((current.punch13 == 2) && (old.punch13 == 1)) || (vars.finishLevel))){
 		vars.boss5 = true;
 		vars.bossCount += 1;
 	}
 
-
+	if (current.place != 0){
+		vars.checkStart = false;
+	}
 
 	if (current.place == 1065353216){
 		vars.inLevel = true;
+		vars.leavePause = true;
 	}
 	if (current.invasion == 4){
 		vars.inInvasion = true;
@@ -213,22 +250,12 @@ update{
 		vars.boss3 = false;
 		vars.boss4 = false;
 		vars.boss5 = false;
+		vars.checkStart = false;
 		vars.inMenu = true;
 	}
 	if ((old.ticket==1) && (current.ticket==0)){
 		vars.numTickets += 1;
 	}
-
-
-	// update some splitting variables
-	vars.lumCounting = ((current.lumScreen == 1) && (old.lumScreen != 1));
-
-	vars.teensyGathering = ((current.tgatherEnd == 1) && (old.tgatherEnd == 0) && (current.place == 0) && (old.place == 1065353216) && (old.tgather == 0) && (current.tgather == 1));
-	
-	vars.reachedEnd = ((vars.lumCounting) || (vars.inInvasion && current.invasionTimeScreen == 1));
-
-	vars.finishLevel = (vars.finishLevel || vars.reachedEnd);
-
 
 	// update text component variables
 	if (settings["teensySplit"]){
@@ -243,8 +270,7 @@ update{
 		}
 	}
 	if (vars.deathCountText){
-		vars.deathComp.Text2 = vars.bossCount.ToString(); 
-		if ( false && (current.death > old.death) || ((current.loading != 0) && (current.invasion == 4) && ((current.levelReset == 0) && (old.levelReset != 0)))){
+		if ((current.death > old.death) || (current.seqReset > old.seqReset) || ((current.loading != 0) && ((current.invasion == 4) && (current.levelReset == 0) && (old.levelReset != 0)))){
 			vars.deathCount += 1;
 			vars.deathComp.Text2 = vars.deathCount.ToString();
 		}
@@ -285,6 +311,7 @@ split{
 
 	// punching last teensy
 	if (settings["punch"] && vars.bossCount == 5){
+		timer.SetGameTime(timer.CurrentTime.GameTime - TimeSpan.FromMilliseconds(50));
 		vars.bossCount += 1;
 		vars.split = true;
 	}
@@ -297,6 +324,11 @@ split{
 	// scratching last ticket
 	if (settings["lastTicket"] && (vars.numTickets == vars.totalTickets) && (vars.splitTickets)){
 		vars.splitTickets = false;
+		vars.split = true;
+	}
+
+	if (settings["10Ticket"] && (vars.numTickets == vars.tickets10) && (vars.splitTickets10)){
+		vars.splitTickets10 = false;
 		vars.split = true;
 	}
 
@@ -316,5 +348,6 @@ split{
 	}
 
 	return vars.split;
+
 
 }
