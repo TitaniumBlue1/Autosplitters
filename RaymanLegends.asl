@@ -249,6 +249,9 @@ update{
 		vars.boss5 = false;
 		vars.checkStart = false;
 		vars.inMenu = true;
+		vars.inLevel = false;
+		vars.inInvasion = false;
+		
 	}
 	
 	// update tickets scratched
