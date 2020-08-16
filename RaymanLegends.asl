@@ -251,6 +251,7 @@ update{
 		vars.inMenu = true;
 		vars.inLevel = false;
 		vars.inInvasion = false;
+		vars.finishLevel = false;
 		
 	}
 	
