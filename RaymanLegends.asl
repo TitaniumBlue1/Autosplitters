@@ -45,7 +45,7 @@ startup{
 	
 	// timer start/reset to do
 	//settings.Add("levelReset", false, "Reset timer when restarting a level");
-	//settings.Add("levelStart", false, "Start timer upon spawning into a level");
+	settings.Add("levelStart", false, "Start timer upon spawning into a level");
 
 	// extra settings
 	settings.Add("miscellaneous", false, "Extra settings");
@@ -150,9 +150,9 @@ start{
 	}
 
 	// spawning in level
-	//if (settings["levelStart"] && (current.place == 1065353216) && (old.place != 1065353216) ){
-	//	return true
-	//}
+	if (settings["levelStart"] && (current.place == 1065353216) && (old.place != 1065353216) && (old.loading == 0)){
+		return true
+	}
 }
 
 isLoading{
