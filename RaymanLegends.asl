@@ -150,7 +150,7 @@ start{
 	}
 
 	// spawning in level
-	if (settings["levelStart"] && (current.place == 1065353216) && (old.place != 1065353216) && (old.loading == 0)){
+	if (settings["levelStart"] && (current.place == 1065353216) && (old.place != 1065353216)){
 		return true;
 	}
 }
